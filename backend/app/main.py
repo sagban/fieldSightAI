@@ -1,16 +1,21 @@
 """
 FastAPI backend for FieldSight AI.
+
 Routes:
   GET  /api/assets    -- list available assets for the inspector dropdown
   GET  /api/health    -- health check
   GET  /api/live/ws   -- WebSocket for Gemini Live (Vertex AI); query param: assetId
+  SPA  /*             -- serves the built React app from dist/ when present
 """
 
 import asyncio
 import base64
 import json
 import logging
+from pathlib import Path
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, JSONResponse
 
 from .agents.integrity_engineer import run_integrity_analysis
 from .config import (
@@ -26,6 +31,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+BASE_DIR = Path(__file__).resolve().parents[1]  # backend/
+DIST_DIR = BASE_DIR / "dist"
 
 app = FastAPI(title="FieldSight AI Backend", version="0.1.0")
 
@@ -169,3 +177,33 @@ async def websocket_live(websocket: WebSocket, assetId: str = ""):
             await websocket.close()
         except Exception:
             pass
+
+
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """
+    Serve the built React SPA from backend/dist when available.
+    - /api/* is handled by explicit routes above.
+    - Any other path returns either the static file or index.html for SPA routing.
+    """
+    if full_path.startswith("api/"):
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+
+    if not DIST_DIR.exists():
+        return JSONResponse(
+            {"error": "UI not built. Run `npm run build` before deploying to Cloud Run."},
+            status_code=500,
+        )
+
+    candidate = DIST_DIR / full_path
+    if full_path and candidate.exists() and candidate.is_file():
+        return FileResponse(str(candidate))
+
+    index_path = DIST_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+
+    return JSONResponse(
+        {"error": "index.html not found in dist. Did the Vite build succeed?"},
+        status_code=500,
+    )

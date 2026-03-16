@@ -170,10 +170,6 @@ function AssetInspectionCard({ asset }: { asset: Asset | undefined }) {
           <span className="opacity-50">Material</span>
           <span className="font-medium">{asset.material}</span>
         </div>
-        <div className="flex justify-between text-xs">
-          <span className="opacity-50">t_min</span>
-          <span className="font-medium">{asset.t_min_mm} mm</span>
-        </div>
       </div>
     </section>
   );
