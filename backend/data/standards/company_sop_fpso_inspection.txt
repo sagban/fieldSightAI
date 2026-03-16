@@ -1,0 +1,101 @@
+FieldSight Energy - Standard Operating Procedure: FPSO Asset Integrity Inspection
+Document No: FS-SOP-AI-001 | Rev: 3 | Effective: 2025-01-01
+
+=== 1. Purpose ===
+
+This SOP defines the procedures for conducting integrity inspections of pressure vessels,
+storage tanks, and heat exchangers on FieldSight Energy FPSO units. It supplements the
+requirements of API 510, ISO 4628, and DNV-RP-C101 with company-specific procedures.
+
+=== 2. Scope ===
+
+Applies to all pressure-containing and structural components on FPSO vessels operated by
+FieldSight Energy, including:
+  - 1st and 2nd stage separators
+  - Produced water treatment vessels
+  - Cargo and slop tanks
+  - Shell-and-tube heat exchangers
+  - Process piping (NPS 2" and above)
+
+=== 3. Inspection Workflow ===
+
+3.1 Pre-Inspection
+  a) Obtain work permit and confirm safe access
+  b) Select asset from the approved Asset Register (source of truth)
+  c) Review previous inspection reports and trending data
+  d) Verify environmental conditions (temperature, humidity, sea state)
+
+3.2 Asset Verification
+  a) Visually confirm the asset nameplate matches the selected Asset ID
+  b) Record nameplate data: manufacturer, serial number, MAWP, design code
+  c) Photograph the nameplate for audit trail
+
+3.3 Data Collection (in order)
+  a) Ultrasonic Thickness (UT):
+     - Minimum 4 readings per inspection zone
+     - Record average and minimum thickness
+     - Use calibrated equipment (± 0.1mm accuracy)
+  b) Pitting Assessment:
+     - Pit gauge measurements for deepest pit in each zone
+     - Record maximum pit depth
+  c) Coating Assessment:
+     - Grade per ISO 4628 (1-5 scale)
+     - Note areas of blistering, flaking, or chalking
+  d) Crack Detection:
+     - Visual inspection of all weld seams
+     - MPI or TOFD for suspect areas
+     - Report any crack-like indications
+
+3.4 Data Review and Categorization
+  All findings shall be categorized using the FieldSight 4-tier system:
+
+  Category A - CRITICAL
+    Triggers: Cracks detected, wall thickness below t_min, remaining life ≤ 0
+    Response: IMMEDIATE notification to Integrity Manager and OIM.
+              Asset must be isolated within 4 hours.
+              Emergency repair plan within 24 hours.
+    Escalation: Mandatory notification to regulatory authority within 48 hours.
+
+  Category B - WARNING
+    Triggers: Pitting exceeds corrosion allowance, coating Grade 4+, sour service concerns
+    Response: Formal work order within 7 days.
+              Repair/mitigation within 60 days.
+              Enhanced monitoring until resolved.
+
+  Category C - MONITOR
+    Triggers: Coating Grade 3, minor pitting within allowance, trending concerns
+    Response: Document in inspection report.
+              Reduce inspection interval if trending adversely.
+              Schedule maintenance at next turnaround.
+
+  Normal - ACCEPTABLE
+    Triggers: All metrics within design limits
+    Response: Standard inspection interval continues.
+              Update trending database.
+
+=== 4. Safety Escalation Matrix ===
+
+4.1 Category A findings trigger the following mandatory actions:
+  - Immediate verbal notification to the Offshore Installation Manager (OIM)
+  - Written notification to the Integrity Engineering Manager within 1 hour
+  - The inspector MUST NOT dismiss or downgrade a Category A finding without
+    written approval from a Level III inspector and the Integrity Manager
+  - All Category A findings require an independent verification inspection
+    within 7 days
+
+4.2 Sour Service Protocol
+  For all assets in H2S service:
+  - Apply 20% safety factor to remaining life calculations
+  - Any pitting > 2.0mm depth is automatically Category B regardless of
+    corrosion allowance
+  - Annual HIC/SSC screening is mandatory
+
+=== 5. Reporting ===
+
+5.1 All inspection findings shall be recorded in the FieldSight CMMS within 24 hours.
+5.2 Reports must include: asset ID, location, all measurements, category, prescribed
+    action, standard references, inspector ID, and approval status.
+5.3 Category A reports require sign-off by:
+    a) The inspecting engineer
+    b) The Integrity Engineering Manager
+    c) The OIM (for operational decisions)

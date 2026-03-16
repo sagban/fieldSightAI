@@ -1,0 +1,71 @@
+DNV-RP-C101 - Design of Offshore Steel Structures: Corrosion Protection
+(Representative Excerpts for Engineering Reference)
+
+=== Section 4 - Corrosion Allowances ===
+
+4.1 General
+Corrosion allowances shall be specified in the design basis for all structural and
+pressure-containing components based on the expected corrosion environment.
+
+4.2 Recommended Corrosion Allowances for FPSO Components:
+
+  Component Type                  | Service           | Allowance (mm)
+  ----------------------------------------------------------------
+  Pressure Vessel (internal)      | Sweet crude        | 1.5 - 3.0
+  Pressure Vessel (internal)      | Sour crude (H2S)   | 3.0 - 6.0
+  Storage Tank (internal)         | Produced water      | 2.0 - 4.0
+  Storage Tank (internal)         | Ballast water       | 1.5 - 3.0
+  Heat Exchanger (shell side)     | Process gas         | 1.0 - 2.0
+  Piping (process)                | Hydrocarbon         | 1.5 - 3.0
+
+4.3 When measured corrosion exceeds the design corrosion allowance, the component
+shall be assessed for fitness-for-service per API 579 or replaced.
+
+=== Section 5 - Cathodic Protection ===
+
+5.1 All submerged and buried steel components shall be protected by cathodic protection
+(CP) systems, either sacrificial anode or impressed current.
+
+5.2 The CP system design shall achieve a protection potential of -0.80V to -1.10V
+(Ag/AgCl reference) on all protected surfaces.
+
+5.3 CP systems shall be surveyed annually to verify adequate protection levels.
+
+=== Section 6 - Coating Maintenance ===
+
+6.1 Coating Systems
+All atmospheric zone steel surfaces shall be protected with a qualified coating system.
+The coating system selection shall consider:
+  - Operating temperature range
+  - Chemical exposure (H2S, CO2, chlorides)
+  - UV exposure
+  - Mechanical damage risk
+
+6.2 Coating Inspection and Maintenance Schedule
+
+  Coating Grade (ISO 4628) | Action Required
+  --------------------------------------------------------
+  Grade 0-2                | Routine monitoring (annual visual)
+  Grade 3                  | Schedule spot repair at next maintenance window
+  Grade 4                  | Full re-coat within 60 days. Implement enhanced UT monitoring.
+  Grade 5                  | IMMEDIATE re-coat. Consider de-rating if wall loss detected.
+
+6.3 Coating Repair Procedures
+  a) Surface preparation to Sa 2½ (ISO 8501-1)
+  b) Application of full coating system (primer + intermediate + topcoat)
+  c) DFT measurement to verify minimum film thickness
+  d) Cure time verification before return to service
+
+=== Section 7 - Inspection Planning ===
+
+7.1 Risk-Based Inspection (RBI) methodology should be applied to optimize inspection
+resources. Components with the following characteristics require higher inspection priority:
+  - Sour service (H2S environment)
+  - High operating temperature (> 100°C)
+  - Previous corrosion findings exceeding 50% of corrosion allowance
+  - Coating Grade 3 or above
+
+7.2 Inspection intervals shall not exceed:
+  - 5 years for components in corrosive service
+  - 10 years for components in non-corrosive service with effective CP and coating
+  - 1 year for components with remaining life less than 4 years

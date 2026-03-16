@@ -1,0 +1,64 @@
+ISO 4628 - Paints and Varnishes: Evaluation of Degradation of Coatings
+(Representative Excerpts for Engineering Reference)
+
+=== Section 1 - Scope ===
+
+This standard specifies methods for the assessment of coating degradation on steel
+substrates, including blistering, rusting, cracking, flaking, and chalking. It provides
+a numerical grading system (Grades 0-5) for each type of degradation.
+
+=== Section 3 - Coating Condition Grading System ===
+
+3.1 Grade 0 - No detectable degradation
+    Coating is intact with no visible defects. Full protection maintained.
+
+3.2 Grade 1 - Very minor degradation
+    Isolated spots of degradation affecting less than 0.05% of the coated area.
+    ACTION: No action required. Standard monitoring schedule.
+
+3.3 Grade 2 - Minor degradation
+    Scattered degradation affecting 0.05% to 0.5% of the coated area.
+    ACTION: Monitor at next scheduled inspection. No immediate re-coating needed.
+
+3.4 Grade 3 - Moderate degradation
+    Noticeable degradation affecting 0.5% to 1% of the coated area.
+    Substrate may be partially exposed in isolated areas.
+    ACTION: Schedule spot re-coating at next available maintenance window.
+    This grade is a WARNING indicator -- degradation is accelerating.
+
+3.5 Grade 4 - Significant degradation
+    Substantial degradation affecting 1% to 8% of the coated area.
+    Significant substrate exposure with active corrosion likely.
+    ACTION: COATING SYSTEM HAS FAILED. Full surface preparation and re-coat required
+    within 60 days. Enhanced UT monitoring of uncoated areas.
+    Reference: DNV-RP-C101 Section 6 for offshore coating maintenance requirements.
+
+3.6 Grade 5 - Severe degradation
+    Extensive degradation affecting more than 8% of the coated area.
+    Coating system is non-functional. Rapid corrosion of exposed substrate expected.
+    ACTION: IMMEDIATE re-coating required. De-rate vessel if wall thinning detected.
+
+=== Section 4 - Assessment of Coating Degradation ===
+
+4.1 Assessment shall be performed visually by qualified inspectors.
+
+4.2 The highest grade of degradation observed in any single inspection zone shall be
+reported as the overall coating condition grade for that component.
+
+4.3 Photographic documentation is required for Grade 3 and above.
+
+4.4 For offshore structures (FPSO, platform topsides, subsea), coating assessment shall
+also consider:
+  - Marine growth coverage (which masks underlying coating degradation)
+  - Splash zone exposure (accelerated degradation due to wet-dry cycling)
+  - Proximity to hot surfaces or chemical exposure points
+
+=== Section 5 - Relationship to Corrosion Rates ===
+
+5.1 Coating failure (Grade 4-5) significantly accelerates corrosion rates. The typical
+corrosion rate for bare carbon steel in a marine environment is 0.1-0.3 mm/year, but
+this can increase to 0.5-1.0 mm/year in splash zones with failed coatings.
+
+5.2 When coating failure is detected, the inspection interval for UT thickness surveys
+should be reduced to ensure the increased corrosion rate is captured in remaining life
+calculations.

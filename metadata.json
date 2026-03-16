@@ -1,0 +1,8 @@
+{
+  "name": "FieldSight AI",
+  "description": "Multi-agent Asset Integrity Orchestrator. Agent 1 (Gemini Live) guides FPSO inspectors via voice/video. Agent 2 (Gemini generateContent) performs grounded engineering analysis with File Search and deterministic Python tools.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}

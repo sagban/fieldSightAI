@@ -1,0 +1,109 @@
+API 510 - Pressure Vessel Inspection Code: In-Service Inspection, Rating, Repair, and Alteration
+(Representative Excerpts for Engineering Reference)
+
+=== Section 5.2 - Corrosion Rate Determination ===
+
+5.2.1 Short-Term Corrosion Rate
+The short-term corrosion rate shall be calculated using the most recent two thickness measurements:
+
+  Corrosion Rate (mm/year) = (t_previous - t_current) / Δt
+
+where:
+  t_previous = wall thickness at prior inspection (mm)
+  t_current  = wall thickness at current inspection (mm)
+  Δt         = elapsed time between inspections (years)
+
+5.2.2 Long-Term Corrosion Rate
+The long-term rate uses the original nominal thickness and the most recent reading:
+
+  Long-Term Rate = (t_nominal - t_current) / total_service_years
+
+The more conservative (higher) of the short-term and long-term rates should be used for
+remaining life calculations unless engineering judgment, supported by process data, justifies
+use of the short-term rate.
+
+=== Section 5.4 - Remaining Life Calculation ===
+
+5.4.1 The remaining life of a vessel component shall be calculated as:
+
+  Remaining Life (years) = (t_current - t_min) / Corrosion Rate
+
+where t_min is the minimum allowable thickness per the original design code (ASME VIII Div.1).
+
+5.4.2 If the calculated remaining life is less than or equal to zero, the component has
+exceeded its safe operating envelope and IMMEDIATE action is required per Section 7.4.
+
+5.4.3 If remaining life is less than the desired interval to next inspection (typically 5 years),
+the inspection interval must be reduced, or repairs/replacements must be scheduled.
+
+=== Section 5.6 - Evaluation of Inspection Findings ===
+
+5.6.1 General Wall Thinning
+When wall thickness surveys reveal uniform thinning, the minimum measured thickness shall be
+compared against t_min. If t_measured < t_min, the vessel shall be:
+  a) Removed from service for repair, OR
+  b) Re-rated (de-rated) to a lower MAWP, OR
+  c) A fitness-for-service (FFS) evaluation per API 579 shall be performed.
+
+5.6.2 Localized Corrosion
+5.6.2.1 Isolated pitting that does not exceed the corrosion allowance may be accepted for
+continued service with enhanced monitoring (reduced inspection intervals).
+
+5.6.2.2 When the maximum pit depth exceeds 50% of the nominal wall thickness, a fitness-for-
+service evaluation per API 579 is recommended.
+
+5.6.2.3 When pit depth exceeds the corrosion allowance, the pitted area shall be:
+  a) Ground smooth and weld-overlaid, OR
+  b) The component shall be replaced.
+  Pitting in sour (H2S) service requires additional evaluation per NACE MR0175.
+
+5.6.3 Cracking
+All crack-like indications detected during inspection shall be evaluated as follows:
+  a) Immediate removal from service if the crack is through-wall or propagating.
+  b) NDT characterization of crack length, depth, and orientation.
+  c) Cracks in pressure-containing components represent a risk of fast-fracture failure
+     and are classified as Category A (Critical) findings requiring immediate response.
+
+=== Section 6.4 - Inspection Intervals ===
+
+6.4.1 The maximum inspection interval shall be the lesser of:
+  a) One-half the calculated remaining life, OR
+  b) 10 years for vessels in non-corrosive service, OR
+  c) 5 years for vessels in corrosive or sour service.
+
+6.4.2 For vessels with a remaining life less than 4 years, annual inspections are required.
+
+=== Section 7.3 - Conditions for Continued Operation ===
+
+7.3.1 A vessel may continue to operate with wall thickness below the original corrosion
+allowance if:
+  a) A fitness-for-service evaluation (API 579) confirms acceptability, AND
+  b) An enhanced monitoring program is implemented, AND
+  c) The inspection interval is reduced to no more than one-half the remaining life.
+
+=== Section 7.4 - Repairs and Alterations ===
+
+7.4.1 All repairs shall comply with the original construction code (ASME VIII) and this
+inspection code.
+
+7.4.2 Weld repairs on pressure-containing components shall be:
+  a) Performed by qualified welders per ASME IX
+  b) Subjected to PWHT where required by the construction code
+  c) Inspected by NDE methods appropriate to the repair type
+
+7.4.3 Shell section replacement is required when:
+  a) Wall thickness is below t_min over an area exceeding 100 cm², OR
+  b) Multiple crack-like indications are found in the same weld seam.
+
+=== Section 5.5 - Service-Specific Concerns ===
+
+5.5.1 Sour Service (H2S)
+Vessels in sour service (as defined by NACE MR0175) are susceptible to:
+  - Sulfide Stress Cracking (SSC)
+  - Hydrogen-Induced Cracking (HIC)
+  - Stress-Oriented Hydrogen-Induced Cracking (SOHIC)
+
+A 20% safety factor shall be applied to all corrosion-rate-based remaining life
+calculations for vessels in sour service. Pitting in sour service, even when within the
+corrosion allowance, shall be classified as Category B (Warning) due to the risk of
+hydrogen-assisted crack initiation at pit bottoms.
