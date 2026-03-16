@@ -1,12 +1,6 @@
 import { useState, useEffect, useRef, useCallback, type Dispatch, type SetStateAction } from 'react';
-import { GoogleGenAI, Modality } from "@google/genai";
-import {
-  RUN_INTEGRITY_ANALYSIS_TOOL,
-  SYSTEM_INSTRUCTION,
-  InspectionRecord,
-  Asset,
-} from '../constants';
-import { SAMPLE_RATE, OUTPUT_SAMPLE_RATE, arrayBufferToBase64, base64ToArrayBuffer } from '../utils/audio';
+import type { InspectionRecord, Asset } from '../constants';
+import { SAMPLE_RATE, OUTPUT_SAMPLE_RATE } from '../utils/audio';
 
 export interface ActivityLogEntry {
   id: string;
@@ -34,6 +28,14 @@ function pushLog(
   ]);
 }
 
+function getLiveWsUrl(assetId: string): string {
+  const base = typeof window !== 'undefined' ? window.location.origin : '';
+  const wsScheme = base.startsWith('https') ? 'wss:' : 'ws:';
+  const host = base.replace(/^https?:\/\//, '');
+  const params = new URLSearchParams({ assetId });
+  return `${wsScheme}//${host}/api/live/ws?${params.toString()}`;
+}
+
 export function useLiveSession() {
   const [isConnected, setIsConnected] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -49,7 +51,7 @@ export function useLiveSession() {
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const sessionRef = useRef<any>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const audioQueueRef = useRef<Int16Array[]>([]);
   const isPlayingRef = useRef(false);
   const speakingLoggedRef = useRef(false);
@@ -77,20 +79,27 @@ export function useLiveSession() {
 
   const playQueuedAudio = useCallback(async () => {
     if (isPlayingRef.current || audioQueueRef.current.length === 0 || !audioContextRef.current) return;
+    const ctx = audioContextRef.current;
+    if (ctx.state === 'suspended') await ctx.resume();
     isPlayingRef.current = true;
     const chunk = audioQueueRef.current.shift()!;
-    const audioBuffer = audioContextRef.current.createBuffer(1, chunk.length, OUTPUT_SAMPLE_RATE);
+    if (chunk.length === 0) {
+      isPlayingRef.current = false;
+      if (audioQueueRef.current.length > 0) playQueuedAudio();
+      return;
+    }
+    const audioBuffer = ctx.createBuffer(1, chunk.length, OUTPUT_SAMPLE_RATE);
     const channelData = audioBuffer.getChannelData(0);
     for (let i = 0; i < chunk.length; i++) {
       channelData[i] = chunk[i] / 32768;
     }
-    const source = audioContextRef.current.createBufferSource();
+    const source = ctx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(audioContextRef.current.destination);
+    source.connect(ctx.destination);
     source.onended = () => {
       isPlayingRef.current = false;
       if (audioQueueRef.current.length > 0) {
-        playQueuedAudio();
+        playQueuedAudio().catch(console.error);
       } else {
         setAgentStatus(prev => (prev.agent1 === 'Speaking...' ? { ...prev, agent1: 'Listening...' } : prev));
       }
@@ -98,9 +107,9 @@ export function useLiveSession() {
     source.start();
   }, []);
 
-  const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const startRecording = useCallback((ws: WebSocket) => {
+    if (!audioContextRef.current) return;
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
       streamRef.current = stream;
       setIsRecording(true);
       const audioContext = audioContextRef.current!;
@@ -109,22 +118,15 @@ export function useLiveSession() {
       source.connect(processor);
       processor.connect(audioContext.destination);
       processor.onaudioprocess = (e) => {
-        if (!sessionRef.current) return;
+        if (ws.readyState !== WebSocket.OPEN) return;
         const inputData = e.inputBuffer.getChannelData(0);
         const pcmData = new Int16Array(inputData.length);
         for (let i = 0; i < inputData.length; i++) {
           pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
         }
-        sessionRef.current.sendRealtimeInput({
-          media: {
-            data: arrayBufferToBase64(pcmData.buffer),
-            mimeType: 'audio/pcm;rate=16000'
-          }
-        });
+        ws.send(pcmData.buffer);
       };
-    } catch (error) {
-      console.error("Failed to start recording:", error);
-    }
+    }).catch((err) => console.error("Failed to start recording:", err));
   }, []);
 
   const stopRecording = useCallback(() => {
@@ -141,263 +143,138 @@ export function useLiveSession() {
       setActivityLog([]);
       pushLog(setActivityLog, 'system', 'Starting session…');
       await initAudio();
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-      const session = await ai.live.connect({
-        model: "gemini-2.5-flash-native-audio-preview-12-2025",
-        config: {
-          responseModalities: [Modality.AUDIO],
-          systemInstruction: `${SYSTEM_INSTRUCTION}\n\nCURRENT CONTEXT:\nAsset ID: ${selectedAsset.asset_id}\nAsset Name: ${selectedAsset.name}\nComponent: ${selectedAsset.component_type}\nService Fluid: ${selectedAsset.service_fluid}\nLocation: ${selectedAsset.location}\nMaterial: ${selectedAsset.material}\nDesign Pressure: ${selectedAsset.design_pressure_bar} bar\nLast Inspection: ${selectedAsset.last_inspection}`,
-          tools: [{ functionDeclarations: [RUN_INTEGRITY_ANALYSIS_TOOL] }],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } }
+
+      const wsUrl = getLiveWsUrl(selectedAsset.asset_id);
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = () => {
+        speakingLoggedRef.current = false;
+        setIsConnected(true);
+        setAgentStatus(prev => ({ ...prev, agent1: "Listening..." }));
+        pushLog(setActivityLog, 'agent1', 'Session open — listening for voice');
+        startRecording(ws);
+      };
+
+      ws.onmessage = async (event: MessageEvent) => {
+        try {
+          if (event.data instanceof ArrayBuffer) {
+            const chunk = new Int16Array(event.data);
+            if (chunk.length === 0) return;
+            audioQueueRef.current.push(chunk);
+            setAgentStatus(prev => (prev.agent1 !== 'Speaking...' ? { ...prev, agent1: "Speaking..." } : prev));
+            if (!speakingLoggedRef.current) {
+              pushLog(setActivityLog, 'agent1', 'Speaking');
+              speakingLoggedRef.current = true;
+            }
+            if (audioContextRef.current?.state === 'suspended') {
+              await audioContextRef.current.resume();
+            }
+            playQueuedAudio().catch((err) => {
+              console.error('playQueuedAudio error:', err);
+              pushLog(setActivityLog, 'system', `Playback error: ${err instanceof Error ? err.message : String(err)}`);
+            });
+            return;
           }
-        },
-        callbacks: {
-          onopen: () => {
+
+          const text = typeof event.data === 'string' ? event.data : await (event.data as Blob).text();
+          let message: Record<string, unknown>;
+          try {
+            message = JSON.parse(text);
+          } catch {
+            return;
+          }
+
+          const serverContent = message.serverContent as Record<string, unknown> | undefined;
+          if (serverContent?.interrupted) {
+            audioQueueRef.current = [];
+            isPlayingRef.current = false;
+            pushLog(setActivityLog, 'system', 'Turn interrupted');
+          }
+          if (serverContent?.turnComplete) {
             speakingLoggedRef.current = false;
-            setIsConnected(true);
-            setAgentStatus(prev => ({ ...prev, agent1: "Listening..." }));
-            pushLog(setActivityLog, 'agent1', 'Session open — listening for voice');
-            startRecording();
-          },
-          onmessage: async (message: any) => {
-            try {
-            // Detect tool call in any form — session closes if we don't respond. Log to debug.
-            const hasToolCall = 'toolCall' in message || 'tool_call' in message;
-            if (hasToolCall) {
-              const payload = message.toolCall ?? message.tool_call;
-              const calls = payload?.functionCalls ?? payload?.function_calls;
-              const count = Array.isArray(calls) ? calls.length : 0;
-              pushLog(setActivityLog, 'system', `Tool call message received (${count} call(s)) — sending response to keep session open`);
-            }
-
-            const toolCallPayload = message.toolCall ?? message.tool_call;
-            let topLevelCalls: any[] = [];
-            if (toolCallPayload) {
-              const raw = toolCallPayload.functionCalls ?? toolCallPayload.function_calls;
-              if (Array.isArray(raw)) {
-                topLevelCalls = raw;
-              } else if (raw && typeof raw === 'object') {
-                topLevelCalls = [raw];
-              } else if (Array.isArray(toolCallPayload)) {
-                topLevelCalls = toolCallPayload;
-              }
-            }
-            const parts = message.serverContent?.modelTurn?.parts ?? message.server_content?.model_turn?.parts ?? [];
-            const hasAudio = parts.some((p: any) => p?.inlineData);
-
-            const processRunIntegrityAnalysis = async (call: { id?: string; name?: string; args?: Record<string, unknown>; arguments?: Record<string, unknown> }) => {
-              const args = (call.args ?? call.arguments ?? {}) as Record<string, unknown>;
-              const callId = call.id ?? (call as any).id;
-              const callName = call.name ?? (call as any).name;
-
-              const sendErrorResponse = (errMessage: string) => {
-                pushLog(setActivityLog, 'system', errMessage);
-                try {
-                  session.sendToolResponse({
-                    functionResponses: [{
-                      id: callId,
-                      name: callName || 'run_integrity_analysis',
-                      response: { error: errMessage, category: "Normal" },
-                    }]
-                  });
-                } catch (e) {
-                  console.error('Failed to send tool error response:', e);
-                }
-              };
-
-              if (!selectedAsset) {
-                sendErrorResponse('No asset selected. Please select an asset and try again.');
-                return;
-              }
-              pushLog(setActivityLog, 'tool', 'Tool call: run_integrity_analysis', {
-                avg_thickness: args.avg_thickness,
-                min_thickness: args.min_thickness,
-                max_pit_depth: args.max_pit_depth,
-                coating_grade: args.coating_grade,
-                has_cracks: args.has_cracks,
-                location: args.location,
-              });
-              setAgentStatus(prev => ({
-                ...prev,
-                agent1: "Waiting for Analysis...",
-                agent2: "Starting Analysis...",
-              }));
-              pushLog(setActivityLog, 'agent2', 'Starting analysis');
-              try {
-                if (!args.service_fluid && selectedAsset) {
-                  args.service_fluid = selectedAsset.service_fluid;
-                }
-                setAgentStatus(prev => ({ ...prev, agent2: "Calculating & Searching Standards..." }));
-                pushLog(setActivityLog, 'agent2', 'Running analysis (standards + calculations)');
-                const response = await fetch('/api/analyze', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(args),
-                });
-                if (!response.ok) throw new Error(`Backend error: ${response.status}`);
-                const verdict = await response.json();
-                pushLog(setActivityLog, 'agent2', 'Verdict received');
-                const record: InspectionRecord = {
-                  id: verdict.id || Math.random().toString(36).substr(2, 9),
-                  timestamp: verdict.timestamp || Date.now(),
-                  asset_id: verdict.asset_id,
-                  location: verdict.location,
-                  avg_thickness: verdict.avg_thickness,
-                  min_thickness: verdict.min_thickness,
-                  max_pit_depth: verdict.max_pit_depth,
-                  coating_condition: verdict.coating_condition || `Grade ${args.coating_grade}`,
-                  has_cracks: verdict.has_cracks,
-                  service_fluid: verdict.service_fluid || args.service_fluid,
-                  category: verdict.category,
-                  verdict: verdict.verdict,
-                  action: verdict.action,
-                  standard_cited: verdict.standard_cited,
-                  corrosion_rate_mm_per_year: verdict.corrosion_rate_mm_per_year,
-                  remaining_life_years: verdict.remaining_life_years,
-                  citations: verdict.citations,
-                };
-                setRecords(prev => [record, ...prev]);
-                if (record.category === 'A' || record.category === 'B') {
-                  setLastAlert(record);
-                }
-                setAgentStatus(prev => ({
-                  ...prev,
-                  agent1: "Delivering Verdict...",
-                  agent2: `Category ${record.category} Verdict`,
-                }));
-                pushLog(setActivityLog, 'agent1', 'Sending to Field Assistant');
-                try {
-                  session.sendToolResponse({
-                    functionResponses: [{
-                      id: callId,
-                      name: callName || 'run_integrity_analysis',
-                      response: verdict,
-                    }]
-                  });
-                } catch (e) {
-                  console.error('sendToolResponse failed:', e);
-                  pushLog(setActivityLog, 'system', `Failed to send verdict to agent: ${e instanceof Error ? e.message : String(e)}`);
-                }
-                setTimeout(() => {
-                  setAgentStatus(prev => ({ ...prev, agent1: "Listening...", agent2: "Idle" }));
-                }, 5000);
-              } catch (err) {
-                console.error("Agent 2 analysis failed:", err);
-                pushLog(setActivityLog, 'system', `Analysis failed: ${err instanceof Error ? err.message : String(err)}`);
-                setAgentStatus(prev => ({ ...prev, agent2: "Error" }));
-                try {
-                  session.sendToolResponse({
-                    functionResponses: [{
-                      id: callId,
-                      name: callName || 'run_integrity_analysis',
-                      response: { error: "Analysis failed. Please try again.", category: "Normal" },
-                    }]
-                  });
-                } catch (e) {
-                  console.error('sendToolResponse (error path) failed:', e);
-                }
-              }
-            };
-
-            let processedToolCall = false;
-            const topLevelCallName = (c: any) => c?.name ?? c?.function_name;
-            for (const call of topLevelCalls) {
-              const cid = call?.id ?? (call as any).id;
-              const cname = topLevelCallName(call) || 'run_integrity_analysis';
-              if (topLevelCallName(call) === 'run_integrity_analysis') {
-                try {
-                  await processRunIntegrityAnalysis(call);
-                } catch (e) {
-                  console.error('processRunIntegrityAnalysis threw:', e);
-                  pushLog(setActivityLog, 'system', `Tool processing error: ${e instanceof Error ? e.message : String(e)}`);
-                  try {
-                    session.sendToolResponse({
-                      functionResponses: [{
-                        id: cid,
-                        name: cname,
-                        response: { error: 'Analysis failed. Please try again.', category: 'Normal' },
-                      }]
-                    });
-                  } catch (sendErr) {
-                    console.error('Fallback sendToolResponse failed:', sendErr);
-                  }
-                }
-                processedToolCall = true;
-                break;
-              }
-              // Unknown tool: still send a response so the server doesn't wait and close the session
-              pushLog(setActivityLog, 'system', `Responding to unknown tool call: ${cname}`);
-              try {
-                session.sendToolResponse({
-                  functionResponses: [{ id: cid, name: cname, response: { error: 'Unknown function' } }]
-                });
-              } catch (e) {
-                console.error('sendToolResponse for unknown function failed:', e);
-              }
-            }
-
-            if (hasAudio) {
-              setAgentStatus(prev => ({ ...prev, agent1: "Speaking..." }));
-              if (!speakingLoggedRef.current) {
-                pushLog(setActivityLog, 'agent1', 'Speaking');
-                speakingLoggedRef.current = true;
-              }
-              for (const part of parts) {
-                if (part?.inlineData?.data) {
-                  const base64Audio = part.inlineData.data;
-                  audioQueueRef.current.push(new Int16Array(base64ToArrayBuffer(base64Audio)));
-                  playQueuedAudio();
-                }
-              }
-            } else {
-              speakingLoggedRef.current = false;
-              if (parts.length > 0) {
-                const hasToolCallInParts = parts.some((p: any) => p?.functionCall);
-                if (!hasToolCallInParts) {
-                  setAgentStatus(prev => ({ ...prev, agent1: "Thinking..." }));
-                  pushLog(setActivityLog, 'agent1', 'Thinking…');
-                }
-              }
-            }
-
-            if (!processedToolCall) {
-              for (const part of parts) {
-                const call = part.functionCall ?? part.function_call;
-                if (!call) continue;
-                const callNameVal = call.name ?? (call as any).name;
-                if (callNameVal === 'run_integrity_analysis') {
-                  await processRunIntegrityAnalysis(call);
-                  break;
-                }
-              }
-            }
-
-            if (message.serverContent?.interrupted) {
-              audioQueueRef.current = [];
-              isPlayingRef.current = false;
-              pushLog(setActivityLog, 'system', 'Turn interrupted');
-            }
-            } catch (err) {
-              console.error('onmessage error:', err);
-              pushLog(setActivityLog, 'system', `Message handling error: ${err instanceof Error ? err.message : String(err)}`);
-            }
-          },
-          onclose: (e: any) => {
-            const reason = e?.reason ?? e?.code ?? 'unknown';
-            pushLog(setActivityLog, 'system', `Session closed (reason: ${reason})`);
-            setIsConnected(false);
-            setAgentStatus({ agent1: "Idle", agent2: "Idle" });
-            stopRecording();
-          },
-          onerror: (err: any) => {
-            console.error("Live API Error:", err);
-            pushLog(setActivityLog, 'system', `Error: ${err?.message || String(err)}`);
-            setIsConnected(false);
           }
+          const modelTurn = serverContent?.modelTurn as { parts?: Array<{ inlineData?: { data?: string } }> } | undefined;
+          const parts = modelTurn?.parts ?? [];
+          for (const part of parts) {
+            if (part?.inlineData?.data) {
+              const binary = Uint8Array.from(atob(part.inlineData.data), c => c.charCodeAt(0));
+              audioQueueRef.current.push(new Int16Array(binary.buffer));
+              playQueuedAudio();
+            }
+          }
+
+          if (message.type === 'tool_result' && message.name === 'run_integrity_analysis') {
+            const result = message.result as Record<string, unknown>;
+            pushLog(setActivityLog, 'agent2', 'Verdict received');
+            const record: InspectionRecord = {
+              id: (result.id as string) || Math.random().toString(36).substr(2, 9),
+              timestamp: (result.timestamp as number) || Date.now(),
+              asset_id: (result.asset_id as string) ?? '',
+              location: (result.location as string) ?? '',
+              avg_thickness: (result.avg_thickness as number) ?? 0,
+              min_thickness: (result.min_thickness as number) ?? 0,
+              max_pit_depth: (result.max_pit_depth as number) ?? 0,
+              coating_condition: (result.coating_condition as string) ?? '',
+              has_cracks: (result.has_cracks as boolean) ?? false,
+              service_fluid: (result.service_fluid as string) ?? '',
+              category: (result.category as InspectionRecord['category']) ?? 'Normal',
+              verdict: (result.verdict as string) ?? '',
+              action: (result.action as string) ?? '',
+              standard_cited: (result.standard_cited as string) ?? '',
+              corrosion_rate_mm_per_year: result.corrosion_rate_mm_per_year as number | undefined,
+              remaining_life_years: result.remaining_life_years as number | null | undefined,
+              citations: result.citations as InspectionRecord['citations'],
+            };
+            setRecords(prev => [record, ...prev]);
+            if (record.category === 'A' || record.category === 'B') {
+              setLastAlert(record);
+            }
+            setAgentStatus(prev => ({
+              ...prev,
+              agent1: "Delivering Verdict...",
+              agent2: `Category ${record.category} Verdict`,
+            }));
+            pushLog(setActivityLog, 'agent1', 'Sending to Field Assistant');
+            setTimeout(() => {
+              setAgentStatus(prev => ({ ...prev, agent1: "Listening...", agent2: "Idle" }));
+            }, 5000);
+          }
+
+          if (message.type === 'tool_call' && message.name === 'run_integrity_analysis') {
+            pushLog(setActivityLog, 'tool', 'Tool call: run_integrity_analysis', message.args as Record<string, unknown>);
+            setAgentStatus(prev => ({
+              ...prev,
+              agent1: "Waiting for Analysis...",
+              agent2: "Starting Analysis...",
+            }));
+            pushLog(setActivityLog, 'agent2', 'Running analysis (standards + calculations)');
+          }
+
+          if (message.type === 'error') {
+            pushLog(setActivityLog, 'system', `Error: ${message.error ?? 'Unknown'}`);
+          }
+        } catch (err) {
+          console.error('onmessage error:', err);
+          pushLog(setActivityLog, 'system', `Message handling error: ${err instanceof Error ? err.message : String(err)}`);
         }
-      });
-      sessionRef.current = session;
+      };
+
+      ws.onclose = (e) => {
+        const reason = e?.reason ?? e?.code ?? 'unknown';
+        pushLog(setActivityLog, 'system', `Session closed (reason: ${reason})`);
+        setIsConnected(false);
+        setAgentStatus({ agent1: "Idle", agent2: "Idle" });
+        stopRecording();
+        wsRef.current = null;
+      };
+
+      ws.onerror = () => {
+        pushLog(setActivityLog, 'system', 'WebSocket error');
+        setIsConnected(false);
+      };
     } catch (error) {
       console.error("Failed to start session:", error);
       pushLog(setActivityLog, 'system', `Failed to start: ${error instanceof Error ? error.message : String(error)}`);
@@ -408,14 +285,14 @@ export function useLiveSession() {
     stopRecording();
     audioQueueRef.current = [];
     isPlayingRef.current = false;
-    const session = sessionRef.current;
-    if (session) {
+    const ws = wsRef.current;
+    if (ws) {
       try {
-        session.close();
+        ws.close();
       } catch (e) {
-        console.warn('Session close error:', e);
+        console.warn('WebSocket close error:', e);
       }
-      sessionRef.current = null;
+      wsRef.current = null;
     }
     setIsConnected(false);
     setAgentStatus({ agent1: "Idle", agent2: "Idle" });

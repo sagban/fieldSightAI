@@ -129,6 +129,28 @@ TOOL_DECLARATIONS = [
 ]
 
 
+def _resolve_file_search_store_name(client: genai.Client, name: str | None) -> str | None:
+    """
+    Resolve FILE_SEARCH_STORE_NAME to the API's store resource name.
+    If name looks like a resource name (contains 'fileSearchStores/' or 'projects/'), return as-is.
+    Otherwise treat as display_name and look up store.name from the list of stores.
+    """
+    if not name or not name.strip():
+        return None
+    name = name.strip()
+    if "fileSearchStores/" in name or name.startswith("projects/"):
+        return name
+    try:
+        for store in client.file_search_stores.list():
+            if getattr(store, "display_name", None) == name:
+                return store.name
+        logger.warning("File Search store with display_name %r not found; File Search disabled", name)
+        return None
+    except Exception as e:
+        logger.warning("Could not resolve File Search store %r: %s; File Search disabled", name, e)
+        return None
+
+
 def _build_tools(file_search_store_name: str | None) -> list[types.Tool]:
     """Build the tools array with function declarations + optional File Search."""
     tools: list[types.Tool] = [
@@ -178,8 +200,8 @@ async def run_integrity_analysis(inspection_data: dict) -> dict:
     """
     client = genai.Client(api_key=GEMINI_API_KEY)
 
-    store_name = FILE_SEARCH_STORE_NAME
-    tools = _build_tools(store_name if store_name else None)
+    store_name = _resolve_file_search_store_name(client, FILE_SEARCH_STORE_NAME)
+    tools = _build_tools(store_name)
 
     prompt = (
         f"Perform an integrity engineering analysis for the following inspection data:\n\n"

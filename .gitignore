@@ -1,9 +1,55 @@
+# Dependencies
 node_modules/
+
+# Build / output
 build/
 dist/
+*.egg-info/
+*.egg
+
+# Coverage & testing
 coverage/
-.DS_Store
-*.log
-.env*
+.nyc_output/
+.pytest_cache/
+.mypy_cache/
+
+# Environment & secrets
+.env
+.env.*
 !.env.example
-*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+env/
+.eggs/
+*.so
+
+# IDE / editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Vite
+.vite/
+
+# TypeScript
+*.tsbuildinfo
