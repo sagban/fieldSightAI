@@ -1,6 +1,8 @@
 # FieldSight AI — Multi-Agent Asset Integrity Orchestrator
 
-FieldSight AI automates FPSO asset inspection by orchestrating two specialized AI agents working together over voice:
+FieldSight AI automates FPSO asset inspection by orchestrating two specialized AI agents working together over voice.
+
+**Documentation:** [Showcase](./SHOWCASE.md) | [Technical](./TECHNICAL.md)
 
 - **Agent 1 (Field Assistant, Live)** — Gemini Live API (Vertex AI) with real-time voice. Runs on the backend and talks to the inspector through the browser. It:
   - Greets the inspector as soon as the session starts
