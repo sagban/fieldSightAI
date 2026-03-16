@@ -50,8 +50,20 @@ async def list_assets():
 
 
 async def _run_integrity_analysis_tool(**kwargs):
-    """Wrapper so Gemini Live can call run_integrity_analysis by name with **args."""
-    return await run_integrity_analysis(kwargs)
+    """
+    Tool handler for Agent 1 (Live): when the Field Assistant calls run_integrity_analysis,
+    we invoke Agent 2 (Integrity Engineer) — a separate Gemini model with generateContent,
+    tools (get_design_basis, calculate_corrosion_rate, etc.), and File Search. This is not
+    a simple function: it runs the full Integrity Engineer agentic loop and returns the verdict.
+    """
+    logger.info("Agent 1 requested run_integrity_analysis; invoking Agent 2 (Integrity Engineer)")
+    try:
+        result = await run_integrity_analysis(kwargs)
+        logger.info("Agent 2 (Integrity Engineer) returned verdict: category=%s", result.get("category"))
+        return result
+    except Exception as e:
+        logger.exception("Agent 2 (Integrity Engineer) failed")
+        return {"error": str(e), "category": "Normal", "verdict": "Analysis failed.", "action": "Please try again or record manually."}
 
 
 _run_integrity_analysis_tool.__name__ = "run_integrity_analysis"

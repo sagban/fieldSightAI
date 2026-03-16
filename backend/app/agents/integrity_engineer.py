@@ -152,19 +152,17 @@ def _resolve_file_search_store_name(client: genai.Client, name: str | None) -> s
 
 
 def _build_tools(file_search_store_name: str | None) -> list[types.Tool]:
-    """Build the tools array with function declarations + optional File Search."""
-    tools: list[types.Tool] = [
-        types.Tool(function_declarations=TOOL_DECLARATIONS),
-    ]
+    """
+    Build the tools array. The API returns 400 if we pass multiple Tool objects
+    (one with function_declarations, one with file_search). Use a single Tool
+    with both when File Search is enabled.
+    """
+    tool_kwargs: dict = {"function_declarations": TOOL_DECLARATIONS}
     if file_search_store_name:
-        tools.append(
-            types.Tool(
-                file_search=types.FileSearch(
-                    file_search_store_names=[file_search_store_name],
-                )
-            )
+        tool_kwargs["file_search"] = types.FileSearch(
+            file_search_store_names=[file_search_store_name],
         )
-    return tools
+    return [types.Tool(**tool_kwargs)]
 
 
 def _execute_function_call(fc: types.FunctionCall) -> dict:
