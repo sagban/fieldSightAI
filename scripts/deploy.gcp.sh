@@ -56,6 +56,17 @@ if [ -z "${GEMINI_API_KEY:-}" ]; then
   fi
 fi
 
+echo "🔐 Ensuring build service account has IAM permissions (storage + Cloud Build)..."
+BUILD_SA="${PROJECT_ID}-compute@developer.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${BUILD_SA}" \
+  --role="roles/storage.admin" >/dev/null 2>&1 || true
+
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${BUILD_SA}" \
+  --role="roles/cloudbuild.builds.builder" >/dev/null 2>&1 || true
+
 echo "🚀 Deploying ${SERVICE_NAME} to Cloud Run (region: ${REGION}, project: ${PROJECT_ID})..."
 
 gcloud run deploy "${SERVICE_NAME}" \
@@ -68,7 +79,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --set-env-vars "GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-$PROJECT_ID}" \
   --set-env-vars "GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-$REGION}" \
   --set-env-vars "FILE_SEARCH_STORE_NAME=${FILE_SEARCH_STORE_NAME}" \
-  --set-env-vars "LIVE_MODEL=${LIVE_MODEL:-gemini-2.5-flash}" \
+  --set-env-vars "LIVE_MODEL=${LIVE_MODEL:-gemini-live-2.5-flash-native-audio}" \
   --set-env-vars "LIVE_SESSION_TIMEOUT_SECONDS=${LIVE_SESSION_TIMEOUT_SECONDS:-180}"
 
 echo "✅ Deployment command finished."
