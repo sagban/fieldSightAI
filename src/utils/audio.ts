@@ -1,4 +1,8 @@
+/** Mic input: API expects 16 kHz PCM. */
 export const SAMPLE_RATE = 16000;
+
+/** Playback: Gemini Live API returns 24 kHz PCM. Playing at 16 kHz would make voice sound slow and low. */
+export const OUTPUT_SAMPLE_RATE = 24000;
 
 export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   let binary = '';

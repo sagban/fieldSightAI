@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Layers, History, Settings, Cpu, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
 import type { InspectionRecord } from '../constants';
@@ -15,12 +16,12 @@ export function ReviewQueue({ records }: ReviewQueueProps) {
           <h2 className="font-serif italic text-lg">Engineering Review Queue</h2>
         </div>
         <div className="flex gap-2">
-          <button className="p-2 border border-[#141414] rounded-sm hover:bg-[#141414] hover:text-[#E4E3E0] transition-colors">
+          <Link to="/history" className="p-2 border border-[#141414] rounded-sm hover:bg-[#141414] hover:text-[#E4E3E0] transition-colors inline-flex" title="History">
             <History size={16} />
-          </button>
-          <button className="p-2 border border-[#141414] rounded-sm hover:bg-[#141414] hover:text-[#E4E3E0] transition-colors">
+          </Link>
+          <Link to="/settings" className="p-2 border border-[#141414] rounded-sm hover:bg-[#141414] hover:text-[#E4E3E0] transition-colors inline-flex" title="Settings">
             <Settings size={16} />
-          </button>
+          </Link>
         </div>
       </div>
 

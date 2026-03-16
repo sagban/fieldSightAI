@@ -5,6 +5,7 @@ interface AssetSelectorProps {
   selectedAssetId: string;
   selectedAsset: Asset | undefined;
   onSelectAsset: (assetId: string) => void;
+  disabled?: boolean;
 }
 
 export function AssetSelector({
@@ -12,17 +13,19 @@ export function AssetSelector({
   selectedAssetId,
   selectedAsset,
   onSelectAsset,
+  disabled = false,
 }: AssetSelectorProps) {
   return (
     <section className="border border-[#141414] p-6 rounded-sm bg-white shadow-sm">
-      <h2 className="font-serif italic text-lg mb-4">Select Asset</h2>
+      <h2 className="font-serif italic text-lg mb-4">Asset Information</h2>
       <div className="space-y-4">
         <div>
           <label className="font-mono text-[10px] uppercase tracking-wider block mb-1">Asset</label>
           <select
             value={selectedAssetId}
             onChange={e => onSelectAsset(e.target.value)}
-            className="w-full p-2 border border-[#141414]/20 rounded-sm font-mono text-sm focus:outline-none focus:border-[#141414]"
+            disabled={disabled}
+            className="w-full p-2 border border-[#141414]/20 rounded-sm font-mono text-sm focus:outline-none focus:border-[#141414] disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {assets.map(a => (
               <option key={a.asset_id} value={a.asset_id}>

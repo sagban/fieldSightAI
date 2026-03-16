@@ -1,6 +1,8 @@
+export { Sidebar } from './Sidebar';
 export { Header } from './Header';
 export { AssetSelector } from './AssetSelector';
 export { CameraFeed } from './CameraFeed';
+export { AgentCenter, FLOW_STEPS, getFlowStep } from './AgentCenter';
 export { AgentStatus } from './AgentStatus';
 export { EnvironmentalContext } from './EnvironmentalContext';
 export { ReviewQueue } from './ReviewQueue';
