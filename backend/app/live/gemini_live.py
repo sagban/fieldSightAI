@@ -236,6 +236,13 @@ class GeminiLive:
                                         args = dict(args)
 
                                     if func_name in self.tool_mapping:
+                                        await event_queue.put({
+                                            "type": "tool_call",
+                                            "name": func_name,
+                                            "args": args,
+                                        })
+                                        await asyncio.sleep(0)
+                                        await asyncio.sleep(0.05)
                                         try:
                                             tool_func = self.tool_mapping[func_name]
                                             if inspect.iscoroutinefunction(tool_func):

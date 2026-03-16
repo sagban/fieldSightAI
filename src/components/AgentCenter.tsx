@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
 import type { InspectionRecord } from '../constants';
 import type { ActivityLogEntry } from '../hooks/useLiveSession';
+import { useEffect, useRef } from 'react';
 
 interface AgentCenterProps {
   isConnected: boolean;
@@ -59,9 +60,17 @@ export function AgentCenter({
   subtleConnection = false,
 }: AgentCenterProps) {
   const currentStep = getFlowStep(isConnected, agentStatus);
+  const logContainerRef = useRef<HTMLDivElement | null>(null);
   const isActive = isConnected;
   const isThinking = agentStatus === 'Thinking...';
   const isSpeaking = agentStatus === 'Speaking...';
+
+  // Keep the latest log visible at the bottom of the fixed-height panel
+  useEffect(() => {
+    const el = logContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [activityLog, records]);
 
   return (
     <section className="border border-[#141414] rounded-sm bg-white/80 backdrop-blur-sm flex flex-col p-6 min-h-0 flex-1">
@@ -90,6 +99,124 @@ export function AgentCenter({
             <span className="font-mono text-[10px] uppercase tracking-wider">{isConnected ? 'Inspector Online' : 'System Offline'}</span>
           </div>
         )}
+      </div>
+
+      {/* Agent activity & output — fixed-height log panel at the top */}
+      <div className="mb-4 flex flex-col border-t border-[#141414]/20 pt-4">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-[#141414]/60 mb-2">
+          Agent activity & output
+        </p>
+        <div ref={logContainerRef} className="h-56 overflow-auto space-y-2">
+          <AnimatePresence initial={false}>
+            {(() => {
+              type TimelineItem =
+                | { key: string; ts: number; kind: 'log'; entry: ActivityLogEntry }
+                | { key: string; ts: number; kind: 'record'; record: InspectionRecord };
+              const items: TimelineItem[] = [
+                ...activityLog.map((entry) => ({
+                  key: `log-${entry.id}`,
+                  ts: entry.ts,
+                  kind: 'log' as const,
+                  entry,
+                })),
+                ...records.map((record) => ({
+                  key: `record-${record.id}`,
+                  ts: record.timestamp,
+                  kind: 'record' as const,
+                  record,
+                })),
+              ].sort((a, b) => a.ts - b.ts); // oldest first, newest at bottom
+
+              if (items.length === 0) {
+                return (
+                  <p className="text-sm italic text-[#141414]/40 py-4 text-center">
+                    No activity yet. Start an inspection to see steps and verdicts here.
+                  </p>
+                );
+              }
+              return items.map((item) =>
+                item.kind === 'log' ? (
+                  <motion.div
+                    key={item.key}
+                    initial={{ opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex gap-2 items-start text-left p-2 rounded-sm border border-[#141414]/10 bg-[#141414]/[0.03]"
+                  >
+                    <LogIcon type={item.entry.type} />
+                    <div className="min-w-0 flex-1">
+                      <span className="font-mono text-[10px] text-[#141414]/50 mr-2">
+                        {new Date(item.entry.ts).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </span>
+                      <span className="text-xs text-[#141414]/90">{item.entry.message}</span>
+                      {item.entry.detail &&
+                        typeof item.entry.detail === 'object' &&
+                        Object.keys(item.entry.detail).length > 0 && (
+                          <pre className="mt-1 font-mono text-[10px] text-[#141414]/60 whitespace-pre-wrap break-all">
+                            {JSON.stringify(item.entry.detail)}
+                          </pre>
+                        )}
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={item.key}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`p-3 rounded-sm border border-[#141414]/10 text-left ${
+                      item.record.category === 'A'
+                        ? 'bg-red-50 border-red-200'
+                        : item.record.category === 'B'
+                          ? 'bg-amber-50 border-amber-200'
+                          : 'bg-[#E4E3E0]/30'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-[10px] text-[#141414]/60">
+                            {new Date(item.record.timestamp).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                          <span className="text-xs font-medium">{item.record.location}</span>
+                          <span
+                            className={`text-[10px] uppercase px-1.5 py-0.5 rounded border ${
+                              item.record.category === 'A'
+                                ? 'border-red-500 text-red-600'
+                                : item.record.category === 'B'
+                                  ? 'border-amber-500 text-amber-600'
+                                  : 'border-[#141414]/20 text-[#141414]/60'
+                            }`}
+                          >
+                            {item.record.category}
+                          </span>
+                        </div>
+                        <p className="text-xs mt-1 font-mono opacity-90">{item.record.action}</p>
+                        {item.record.verdict && (
+                          <p className="text-[10px] italic opacity-70 mt-0.5 truncate">
+                            {item.record.verdict}
+                          </p>
+                        )}
+                      </div>
+                      {item.record.category === 'A' ? (
+                        <AlertTriangle size={16} className="text-red-600 shrink-0" />
+                      ) : item.record.category === 'B' ? (
+                        <Info size={16} className="text-amber-600 shrink-0" />
+                      ) : (
+                        <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                      )}
+                    </div>
+                  </motion.div>
+                ),
+              );
+            })()}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Flow — optional when progress is shown at page level */}
@@ -199,85 +326,6 @@ export function AgentCenter({
         {isConnected ? <MicOff size={20} /> : <Mic size={20} />}
         {isConnected ? 'End Inspection' : 'Start Inspection'}
       </button>
-
-      {/* Agent activity & output — merged timeline */}
-      <div className="mt-4 flex-1 min-h-0 flex flex-col border-t border-[#141414]/20 pt-4">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#141414]/60 mb-2">Agent activity & output</p>
-        <div className="flex-1 min-h-0 overflow-auto space-y-2">
-          <AnimatePresence initial={false}>
-            {(() => {
-              type TimelineItem = { key: string; ts: number; kind: 'log'; entry: ActivityLogEntry } | { key: string; ts: number; kind: 'record'; record: InspectionRecord };
-              const items: TimelineItem[] = [
-                ...activityLog.map((entry) => ({ key: `log-${entry.id}`, ts: entry.ts, kind: 'log' as const, entry })),
-                ...records.map((record) => ({ key: `record-${record.id}`, ts: record.timestamp, kind: 'record' as const, record })),
-              ].sort((a, b) => a.ts - b.ts);
-
-              if (items.length === 0) {
-                return (
-                  <p className="text-sm italic text-[#141414]/40 py-4 text-center">No activity yet. Start an inspection to see steps and verdicts here.</p>
-                );
-              }
-              return items.map((item) =>
-                item.kind === 'log' ? (
-                  <motion.div
-                    key={item.key}
-                    initial={{ opacity: 0, x: -4 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex gap-2 items-start text-left p-2 rounded-sm border border-[#141414]/10 bg-[#141414]/[0.03]"
-                  >
-                    <LogIcon type={item.entry.type} />
-                    <div className="min-w-0 flex-1">
-                      <span className="font-mono text-[10px] text-[#141414]/50 mr-2">
-                        {new Date(item.entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                      </span>
-                      <span className="text-xs text-[#141414]/90">{item.entry.message}</span>
-                      {item.entry.detail && typeof item.entry.detail === 'object' && Object.keys(item.entry.detail).length > 0 && (
-                        <pre className="mt-1 font-mono text-[10px] text-[#141414]/60 whitespace-pre-wrap break-all">
-                          {JSON.stringify(item.entry.detail)}
-                        </pre>
-                      )}
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key={item.key}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`p-3 rounded-sm border border-[#141414]/10 text-left ${
-                      item.record.category === 'A' ? 'bg-red-50 border-red-200' : item.record.category === 'B' ? 'bg-amber-50 border-amber-200' : 'bg-[#E4E3E0]/30'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-[10px] text-[#141414]/60">
-                            {new Date(item.record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <span className="text-xs font-medium">{item.record.location}</span>
-                          <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded border ${
-                            item.record.category === 'A' ? 'border-red-500 text-red-600' : item.record.category === 'B' ? 'border-amber-500 text-amber-600' : 'border-[#141414]/20 text-[#141414]/60'
-                          }`}>
-                            {item.record.category}
-                          </span>
-                        </div>
-                        <p className="text-xs mt-1 font-mono opacity-90">{item.record.action}</p>
-                        {item.record.verdict && <p className="text-[10px] italic opacity-70 mt-0.5 truncate">{item.record.verdict}</p>}
-                      </div>
-                      {item.record.category === 'A' ? (
-                        <AlertTriangle size={16} className="text-red-600 shrink-0" />
-                      ) : item.record.category === 'B' ? (
-                        <Info size={16} className="text-amber-600 shrink-0" />
-                      ) : (
-                        <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-                      )}
-                    </div>
-                  </motion.div>
-                )
-              );
-            })()}
-          </AnimatePresence>
-        </div>
-      </div>
 
       <style>{`
         @keyframes agent-ring {

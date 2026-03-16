@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, MapPin, Droplets, Calendar } from 'lucide-react';
 import {
@@ -35,6 +35,7 @@ export function AgentPage() {
   } = useLiveSession();
 
   const [weather] = useState(WEATHER);
+  const autoStartedRef = useRef(false);
 
   useEffect(() => {
     if (assetIdFromState) {
@@ -47,6 +48,18 @@ export function AgentPage() {
       navigate('/', { replace: true });
     }
   }, [assetIdFromState, selectedAssetId, assets.length, navigate]);
+
+  // When user comes from InspectionPage with an asset, start the session immediately so the agent begins communication
+  useEffect(() => {
+    if (!assetIdFromState || !selectedAsset || isConnected || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    toggleConnection();
+  }, [assetIdFromState, selectedAsset, isConnected, toggleConnection]);
+
+  // Reset auto-start when navigating with a different asset
+  useEffect(() => {
+    autoStartedRef.current = false;
+  }, [assetIdFromState]);
 
   const currentStep = getFlowStep(isConnected, agentStatus.agent1);
 

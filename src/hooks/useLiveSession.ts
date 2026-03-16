@@ -209,9 +209,10 @@ export function useLiveSession() {
           if (message.type === 'tool_result' && message.name === 'run_integrity_analysis') {
             const result = message.result as Record<string, unknown>;
             pushLog(setActivityLog, 'agent2', 'Verdict received');
+            const now = Date.now();
             const record: InspectionRecord = {
               id: (result.id as string) || Math.random().toString(36).substr(2, 9),
-              timestamp: (result.timestamp as number) || Date.now(),
+              timestamp: now,
               asset_id: (result.asset_id as string) ?? '',
               location: (result.location as string) ?? '',
               avg_thickness: (result.avg_thickness as number) ?? 0,
